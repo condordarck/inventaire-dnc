@@ -93,6 +93,7 @@ button.danger:hover{background:#fdeeee}
   <div class="top">
     <h1>Inventaire DNC</h1>
     <select id="fsel" aria-label="Fiche en cours"></select>
+    <button data-act="pdf" title="Imprimer la fiche ou l'enregistrer au format PDF">🖨 PDF</button>
     <button class="main" data-act="newfiche" title="Nouvelle fiche (garde institution, localité et équipe)">+ Nouvelle fiche</button>
     <button class="danger" data-act="delfiche">Supprimer</button>
     <button id="sync" data-act="syncnow" title="Synchronisation avec la base centrale">☁ …</button><span id="status"></span>
@@ -126,6 +127,7 @@ button.danger:hover{background:#fdeeee}
     <div class="card">
       <h2>3. Données et synchronisation avec la base centrale</h2>
       <div class="bar">
+        <button class="main" data-act="pdf" title="Imprimer ou enregistrer la fiche en PDF">🖨 Enregistrer la fiche en PDF</button>
         <button data-act="csv">Exporter tout en Excel (CSV)</button>
         <button data-act="fichejson">Exporter cette fiche (JSON)</button>
         <button data-act="fichecsv">Exporter cette fiche (Excel CSV)</button>
@@ -133,7 +135,7 @@ button.danger:hover{background:#fdeeee}
         <button data-act="restore">Restaurer une sauvegarde</button>
         <input type="file" id="restoreFile" accept=".json,application/json" style="display:none">
       </div>
-      <p class="hint">Les données sont enregistrées sur cet appareil, puis envoyées à la base centrale dès qu'il y a du réseau. Faites quand même une sauvegarde en fin de journée.</p>
+      <p class="hint">Pour obtenir le PDF : cliquez « Enregistrer la fiche en PDF », puis dans la fenêtre d'impression choisissez « Enregistrer au format PDF ». Les données sont enregistrées sur cet appareil, puis envoyées à la base centrale dès qu'il y a du réseau. Faites quand même une sauvegarde en fin de journée.</p>
       <h2 style="margin-top:16px">Connexion à la base centrale</h2>
       <div class="grid">
         <label class="f w2">Adresse du serveur (se termine par /exec)<input type="text" id="cfgUrl" autocomplete="off"></label>
@@ -156,8 +158,8 @@ button.danger:hover{background:#fdeeee}
   </div>
 
   <div class="printbar">
-    <button class="main" data-act="print-one">🖨 Imprimer cette catégorie</button>
-    <button data-act="print-all">🖨 Imprimer toutes les catégories remplies</button>
+    <button class="main" data-act="print-one">🖨 PDF : cette catégorie</button>
+    <button data-act="print-all">🖨 PDF : toute la fiche</button>
     <label>Lignes vides à ajouter <input type="number" id="blankRows" value="0" min="0" max="30"></label>
   </div>
   <div id="lists"></div>
@@ -402,11 +404,7 @@ document.addEventListener('click',function(e){
     return;
   }
   if(act==='print-one'){doPrint([DB.activeTab]);return}
-  if(act==='print-all'){
-    var ks=CATS.filter(function(c){return (f.items[c.k]||[]).length}).map(function(c){return c.k});
-    if(!ks.length){alert('Aucune catégorie remplie.');return}
-    doPrint(ks);return;
-  }
+  if(act==='print-all'||act==='pdf'){printFiche();return}
   if(act==='syncnow'){syncNow(true);return}
   if(act==='cfgsave'){readCfg();alert('Enregistré.');syncNow(true);return}
   if(act==='cfgtest'){readCfg();testConn();return}
@@ -504,6 +502,11 @@ function ficheHTML(cat,f,blank){
     (c.note?'<div class="pnote">(1) à préciser</div>':'')+
     '<div class="pfoot"><div class="bars"><i style="background:#2e6b3a"></i><i style="background:#f5c400"></i><i style="background:#c8202f"></i></div><div class="slogan">Pour la qualité de la dépense !</div></div>'+
   '</section>';
+}
+function printFiche(){
+  var f=cur(),ks=CATS.filter(function(c){return (f.items[c.k]||[]).length}).map(function(c){return c.k});
+  if(!ks.length){alert('Aucune catégorie remplie.');return}
+  doPrint(ks);
 }
 function doPrint(cats){
   var f=cur(),blank=Math.max(0,Math.min(30,parseInt($('#blankRows').value,10)||0));
