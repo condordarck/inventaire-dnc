@@ -21,6 +21,31 @@ body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-s
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 10px}
 .w2{grid-column:span 2}
 @media(max-width:520px){.w2{grid-column:span 1}}
+@media(max-width:520px){
+  .top{padding:5px 8px;gap:5px}
+  .top h1{font-size:14px;margin-right:0}
+  .top select{flex:1 1 100%;font-size:13px;padding:5px}
+  .top button{padding:5px 8px;font-size:12px}
+  .wrap{padding:6px 8px 36px}
+  .card{padding:8px;margin:6px 0}
+  .card h2{font-size:13px;margin-bottom:5px}
+  .grid{gap:6px}
+  label.f{font-size:11px}
+  label.f input,label.f select,label.f textarea{font-size:14px;padding:5px 6px}
+  label.f textarea{min-height:42px}
+  .hint{font-size:11px;margin:3px 0 0}
+  .row-card{padding:6px;margin:6px 0}
+  .card-head{margin-bottom:5px}
+  .card-head button{padding:3px 7px;font-size:11px}
+  .total{padding:4px 7px;margin-top:5px;font-size:12px}
+  .tabs{margin:5px 0 0;gap:4px}
+  .tab{padding:4px 8px;font-size:11px}
+  .bar{gap:5px;margin-top:6px}
+  button{font-size:12px;padding:5px 8px}
+  .printbar{padding:5px 6px;gap:5px}
+  .printbar label{font-size:11px}
+  .printbar input{width:44px;padding:3px}
+}
 label.f{display:flex;flex-direction:column;font-size:12px;color:#4a5a4a;gap:3px}
 label.f input,label.f select,label.f textarea{font:inherit;font-size:15px;color:var(--tx);padding:7px 8px;border:1px solid #b9c5b9;border-radius:6px;background:#fff;min-width:0}
 label.f textarea{min-height:64px;resize:vertical}
@@ -96,7 +121,6 @@ button.danger:hover{background:#fdeeee}
     <button data-act="pdf" title="Imprimer la fiche ou l'enregistrer au format PDF">🖨 PDF</button>
     <button class="main" data-act="newfiche" title="Nouvelle fiche (garde institution, localité et équipe)">+ Nouvelle fiche</button>
     <button class="danger" data-act="delfiche">Supprimer</button>
-    <button id="sync" data-act="syncnow" title="Synchronisation avec la base centrale">☁ …</button><span id="status"></span>
   </div>
 
   <div class="wrap">
@@ -125,7 +149,7 @@ button.danger:hover{background:#fdeeee}
     </div>
 
     <div class="card">
-      <h2>3. Données et synchronisation avec la base centrale</h2>
+      <h2>3. Données et PDF</h2>
       <div class="bar">
         <button class="main" data-act="pdf" title="Imprimer ou enregistrer la fiche en PDF">🖨 Enregistrer la fiche en PDF</button>
         <button data-act="csv">Exporter tout en Excel (CSV)</button>
@@ -135,25 +159,7 @@ button.danger:hover{background:#fdeeee}
         <button data-act="restore">Restaurer une sauvegarde</button>
         <input type="file" id="restoreFile" accept=".json,application/json" style="display:none">
       </div>
-      <p class="hint">Pour obtenir le PDF : cliquez « Enregistrer la fiche en PDF », puis dans la fenêtre d'impression choisissez « Enregistrer au format PDF ». Les données sont enregistrées sur cet appareil, puis envoyées à la base centrale dès qu'il y a du réseau. Faites quand même une sauvegarde en fin de journée.</p>
-      <h2 style="margin-top:16px">Connexion à la base centrale</h2>
-      <div class="grid">
-        <label class="f w2">Adresse du serveur (se termine par /exec)<input type="text" id="cfgUrl" autocomplete="off"></label>
-        <label class="f">Clé secrète<input type="password" id="cfgKey" autocomplete="off"></label>
-        <label class="f">Nom de l'agent / de l'équipe<input type="text" id="cfgAgent" autocomplete="off"></label>
-        <label class="f">Institution par défaut<input type="text" id="cfgInstitution" autocomplete="off"></label>
-        <label class="f">Structure / service par défaut<input type="text" id="cfgStructure" autocomplete="off"></label>
-        <label class="f">Localité par défaut<input type="text" id="cfgLocalite" autocomplete="off"></label>
-      </div>
-      <div class="bar">
-        <button data-act="cfgsave">Enregistrer</button>
-        <button data-act="cfgtest">Tester la connexion</button>
-        <button class="main" data-act="syncnow">Synchroniser maintenant</button>
-        <button data-act="validate">✓ Vérifier et envoyer</button>
-        <button data-act="cfglink">Copier le lien de configuration pour les agents</button>
-        <button data-act="resendall">Tout renvoyer</button>
-      </div>
-      <p class="hint" id="syncInfo"></p>
+      <p class="hint" id="pdfHint">Pour obtenir le PDF : cliquez « Enregistrer la fiche en PDF », puis « Enregistrer au format PDF » dans la fenêtre d'impression. Les données restent sur cet appareil : faites une sauvegarde en fin de journée.</p>
     </div>
   </div>
 
@@ -251,25 +257,24 @@ function $(s,r){return (r||document).querySelector(s)}
 function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
 
 /* ---------- données ---------- */
-var DB={fiches:[],currentId:null,activeTab:'durables',deleted:[]};
+var DB={fiches:[],currentId:null,activeTab:'durables'};
 function blankFiche(base){
   var b=base?base.header:{};
   return {id:uid(),header:{
     date:today(),gestion:b.gestion||String(new Date().getFullYear()),
-    institution:CFG.institution||b.institution||'',structure:CFG.structure||b.structure||'',localite:CFG.localite||b.localite||'',localisation:'',num_loc:'',
+    institution:b.institution||'',structure:b.structure||'',localite:b.localite||'',localisation:'',num_loc:'',
     occupant:'',equipe:b.equipe||'',chef_parc:b.chef_parc||'',comptable:b.comptable||''
-  },fichenum:{},items:{},rev:0,syncedRev:-1};
+  },fichenum:{},items:{},rev:0};
 }
 function load(){
   try{var s=localStorage.getItem(KEY);if(s){var o=JSON.parse(s);if(o&&o.fiches)DB=o;}}catch(e){}
-  if(!DB.deleted)DB.deleted=[];
   if(!DB.fiches.length){var f=blankFiche();DB.fiches.push(f);DB.currentId=f.id;}
   if(!cur())DB.currentId=DB.fiches[0].id;
   if(!catOf(DB.activeTab))DB.activeTab='durables';
 }
 function cur(){return DB.fiches.filter(function(f){return f.id===DB.currentId})[0]}
 var timer=null;
-function setStatus(t){$('#status').textContent=t}
+function setStatus(t){}
 function saveNow(){
   try{localStorage.setItem(KEY,JSON.stringify(DB));setStatus('✔ Enregistré sur cet appareil');}
   catch(e){setStatus('⚠ Enregistrement impossible : faites une sauvegarde');}
@@ -352,7 +357,7 @@ function buildLists(){
     return '<datalist id="dl-'+n+'">'+Object.keys(S[n]).map(function(v){return '<option value="'+esc(v)+'">'}).join('')+'</datalist>';
   }).join('');
 }
-function renderAll(){renderSel();renderHeader();renderTabs();renderPanel();buildLists();renderSync()}
+function renderAll(){renderSel();renderHeader();renderTabs();renderPanel();buildLists()}
 
 /* ---------- évènements ---------- */
 document.addEventListener('input',function(e){
@@ -386,7 +391,7 @@ document.addEventListener('click',function(e){
   }
   if(act==='del'){
     var i=+b.closest('.row-card').dataset.i;
-    if(confirm('Supprimer l\'article '+(i+1)+' ? Il sera aussi retiré de la base centrale à la prochaine synchronisation.')){f.items[DB.activeTab].splice(i,1);touch(f);renderPanel();renderTabs();saveNow()}
+    if(confirm('Supprimer l\'article '+(i+1)+' ?')){f.items[DB.activeTab].splice(i,1);touch(f);renderPanel();renderTabs();saveNow()}
     return;
   }
   if(act==='dup'){
@@ -395,31 +400,15 @@ document.addEventListener('click',function(e){
   }
   if(act==='newfiche'){var nf=blankFiche(f);DB.fiches.unshift(nf);DB.currentId=nf.id;saveNow();renderAll();window.scrollTo(0,0);return}
   if(act==='delfiche'){
-    if(confirm('Supprimer définitivement cette fiche et tous ses articles ? Elle sera aussi supprimée de la base centrale à la prochaine synchronisation.')){
-      if(f.syncedRev>=0&&DB.deleted.indexOf(f.id)<0)DB.deleted.push(f.id);
+    if(confirm('Supprimer définitivement cette fiche et tous ses articles ?')){
       DB.fiches=DB.fiches.filter(function(x){return x.id!==f.id});
       if(!DB.fiches.length)DB.fiches.push(blankFiche());
-      DB.currentId=DB.fiches[0].id;saveNow();renderAll();queueSync();
+      DB.currentId=DB.fiches[0].id;saveNow();renderAll();
     }
     return;
   }
   if(act==='print-one'){doPrint([DB.activeTab]);return}
   if(act==='print-all'||act==='pdf'){printFiche();return}
-  if(act==='syncnow'){syncNow(true);return}
-  if(act==='cfgsave'){readCfg();alert('Enregistré.');syncNow(true);return}
-  if(act==='cfgtest'){readCfg();testConn();return}
-  if(act==='cfglink'){cfgLink();return}
-  if(act==='resendall'){
-    if(confirm('Renvoyer toutes les fiches de cet appareil vers la base centrale ? (sans risque : les lignes existantes sont remplacées)')){
-      DB.fiches.forEach(function(x){x.syncedRev=-1;x.rev=(x.rev||0)+1});saveNow();syncNow(true);
-    }
-    return;
-  }
-  if(act==='validate'){
-    var issues=validateFiche(f);
-    if(issues.length){alert('À compléter avant envoi :\n- '+issues.join('\n- '));return}
-    saveNow();syncNow(true);return;
-  }
   if(act==='csv'){exportCSV();return}
   if(act==='fichejson'){exportFicheJSON();return}
   if(act==='fichecsv'){exportFicheCSV();return}
@@ -434,10 +423,10 @@ $('#restoreFile').addEventListener('change',function(e){
       var o=JSON.parse(r.result);if(!o||!o.fiches)throw new Error('format');
       o.fiches.forEach(function(nf){
         var idx=-1;DB.fiches.forEach(function(x,i){if(x.id===nf.id)idx=i});
-        nf.syncedRev=-1;nf.rev=(nf.rev||0)+1;DB.deleted=DB.deleted.filter(function(d){return d!==nf.id});
+        nf.rev=(nf.rev||0)+1;
         if(idx>=0)DB.fiches[idx]=nf;else DB.fiches.push(nf);
       });
-      saveNow();renderAll();queueSync();alert('Sauvegarde restaurée : '+o.fiches.length+' fiche(s).');
+      saveNow();renderAll();alert('Sauvegarde restaurée : '+o.fiches.length+' fiche(s).');
     }catch(err){alert('Fichier de sauvegarde invalide.')}
     e.target.value='';
   };
@@ -525,10 +514,6 @@ function download(name,mime,text,bom){
 }
 function backup(){download('inventaire_sauvegarde_'+today()+'.json','application/json',JSON.stringify(DB,null,1))}
 var COLS_CSV=['id_fiche','date_inventaire','gestion','institution','structure','localite','localisation','num_localisation','occupant','equipe','categorie','num_fiche','ligne','designation','immatriculation','marque','source_financement','couleur_plaque','num_moteur','num_chassis','utilisateur','bon','passable','mauvais','sain','avarie','perime','total_physique','stock_theorique','ecart','date_acquisition','annee_acquisition','annee_mise_en_service','observations'];
-function ficheHeader(f){
-  var h=f.header;
-  return {id_fiche:f.id,date_inventaire:fmtDate(h.date),gestion:h.gestion,institution:h.institution,structure:h.structure,localite:h.localite,localisation:h.localisation,num_localisation:h.num_loc,occupant:h.occupant,equipe:(h.equipe||'').replace(/\r?\n/g,', '),chef_parc:h.chef_parc,comptable:h.comptable};
-}
 function ficheRows(f){
   var h=f.header,out=[];
   CATS.forEach(function(c){
@@ -560,137 +545,13 @@ function exportCSVFor(list,name){
 function exportCSV(){exportCSVFor(DB.fiches,'inventaire_export_'+today()+'.csv')}
 function exportFicheCSV(){var f=cur();exportCSVFor([f],'fiche_'+today()+'.csv')}
 function exportFicheJSON(){var f=cur();download('fiche_'+today()+'.json','application/json',JSON.stringify({fiches:[f]},null,1))}
-function validateFiche(f){
-  var issues=[],h=f.header;
-  if(!h.date)issues.push("Date de l'inventaire");
-  if(!h.institution)issues.push('Institution');
-  if(!h.structure)issues.push('Structure / service');
-  if(!h.localite)issues.push('Localité');
-  if(!hasItems(f))issues.push('Aucun article saisi');
-  CATS.forEach(function(c){
-    var items=f.items[c.k]||[];
-    if(items.length&&!f.fichenum[c.k])issues.push('N° de fiche ('+c.label+')');
-    items.forEach(function(it,i){if(!(it.designation||it.nature))issues.push(c.label+' — article '+(i+1)+' : désignation manquante')});
-  });
-  if(!h.occupant)issues.push("Occupant du bureau / magasinier");
-  return issues;
-}
-
-/* ---------- synchronisation avec la base centrale ---------- */
-var CFGKEY='inventaire_dnc_cfg';
-var CFG={url:'',key:'',agent:'',institution:'',structure:'',localite:''};
-function b64enc(s){return btoa(unescape(encodeURIComponent(s)))}
-function b64dec(s){return decodeURIComponent(escape(atob(s)))}
-var syncing=false,syncErr='',syncTimer=null,lastOk=0;
-function saveCfg(){try{localStorage.setItem(CFGKEY,JSON.stringify(CFG))}catch(e){}}
-function loadCfg(){
-  try{var s=localStorage.getItem(CFGKEY);if(s){var o=JSON.parse(s);CFG.url=o.url||'';CFG.key=o.key||'';CFG.agent=o.agent||'';CFG.institution=o.institution||'';CFG.structure=o.structure||'';CFG.localite=o.localite||''}}catch(e){}
-  try{
-    var m=/[#&]cfg=([^&]+)/.exec(location.hash);
-    if(m){
-      var b=m[1].replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';
-      var c=JSON.parse(b64dec(b));
-      if(c.u)CFG.url=c.u;if(c.k)CFG.key=c.k;if(c.a)CFG.agent=c.a;
-      if(c.i)CFG.institution=c.i;if(c.s)CFG.structure=c.s;if(c.l)CFG.localite=c.l;
-      saveCfg();
-      history.replaceState(null,'',location.pathname+location.search);
-    }
-  }catch(e){}
-}
-function applyCfgDefaults(){
-  var f=cur();if(!f||hasItems(f))return;
-  var h=f.header,ch=0;
-  if(!h.institution&&CFG.institution){h.institution=CFG.institution;ch=1}
-  if(!h.structure&&CFG.structure){h.structure=CFG.structure;ch=1}
-  if(!h.localite&&CFG.localite){h.localite=CFG.localite;ch=1}
-  if(ch){f.rev=(f.rev||0)+1;saveNow()}
-}
-function renderCfg(){$('#cfgUrl').value=CFG.url;$('#cfgKey').value=CFG.key;$('#cfgAgent').value=CFG.agent;$('#cfgInstitution').value=CFG.institution;$('#cfgStructure').value=CFG.structure;$('#cfgLocalite').value=CFG.localite}
-function readCfg(){CFG.url=$('#cfgUrl').value.trim();CFG.key=$('#cfgKey').value.trim();CFG.agent=$('#cfgAgent').value.trim();CFG.institution=$('#cfgInstitution').value.trim();CFG.structure=$('#cfgStructure').value.trim();CFG.localite=$('#cfgLocalite').value.trim();saveCfg();renderSync()}
-function hasItems(f){return Object.keys(f.items||{}).some(function(k){return (f.items[k]||[]).length})}
-function dirtyFiches(){
-  return DB.fiches.filter(function(f){
-    var synced=f.syncedRev==null?-1:f.syncedRev;
-    return (f.rev||0)!==synced&&(hasItems(f)||synced>=0);
-  });
-}
-function pendingCount(){return dirtyFiches().length+DB.deleted.length}
-function renderSync(){
-  var b=$('#sync'),n=pendingCount(),txt;
-  if(!CFG.url||!CFG.key)txt='☁ Non configuré';
-  else if(syncing)txt='☁ Envoi…';
-  else if(syncErr)txt='⚠ '+(n?n+' en attente':'erreur');
-  else if(n)txt='☁ '+n+' en attente';
-  else txt='☁ À jour';
-  b.textContent=txt;
-  var info=$('#syncInfo');
-  if(info)info.textContent=syncErr?('Dernier problème : '+syncErr+'. Les fiches restent en attente et seront renvoyées automatiquement toutes les 30 minutes.'):(lastOk?('Dernier envoi réussi à '+new Date(lastOk).toLocaleTimeString('fr-FR')+'. Nouvelle tentative automatique toutes les 30 minutes si des fiches restent en attente.'):'');
-}
-function touch(f){f.rev=(f.rev||0)+1;f.updated=Date.now();queueSync()}
-function queueSync(){clearTimeout(syncTimer);syncTimer=setTimeout(function(){syncNow(false)},4000);renderSync()}
-function errText(e){
-  var m=String((e&&e.message)||e);
-  if(e&&e.name==='AbortError')return 'délai dépassé (réseau trop lent)';
-  if(/JSON|Unexpected|DOCTYPE/i.test(m))return "réponse invalide : vérifiez l'adresse et le déploiement (accès « Tout le monde »)";
-  if(/Failed to fetch|NetworkError|Load failed/i.test(m))return 'réseau indisponible';
-  return m;
-}
-function post(body){
-  body.key=CFG.key;body.agent=CFG.agent||'';
-  var ctl=('AbortController' in window)?new AbortController():null;
-  var tm=ctl?setTimeout(function(){ctl.abort()},40000):0;
-  return fetch(CFG.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),signal:ctl?ctl.signal:undefined})
-    .then(function(r){clearTimeout(tm);return r.json()})
-    .then(function(j){if(!j||!j.ok)throw new Error((j&&j.error)||'refusé par le serveur');return j});
-}
-function syncNow(manual){
-  if(syncing)return;
-  if(!CFG.url||!CFG.key){
-    renderSync();
-    if(manual){var u=$('#cfgUrl');u.scrollIntoView({block:'center'});u.focus()}
-    return;
-  }
-  if(!navigator.onLine){syncErr='réseau indisponible';renderSync();return}
-  var jobs=[];
-  DB.deleted.slice().forEach(function(id){jobs.push({type:'del',id:id})});
-  dirtyFiches().forEach(function(f){jobs.push({type:'up',f:f,rev:f.rev||0})});
-  if(!jobs.length){syncErr='';renderSync();return}
-  syncing=true;syncErr='';renderSync();
-  var p=Promise.resolve();
-  jobs.forEach(function(j){
-    p=p.then(function(){
-      if(j.type==='del')return post({action:'delete',id_fiche:j.id}).then(function(){DB.deleted=DB.deleted.filter(function(x){return x!==j.id})});
-      return post({action:'upsert',fiche:ficheHeader(j.f),rows:ficheRows(j.f)}).then(function(){j.f.syncedRev=j.rev});
-    });
-  });
-  p.then(function(){lastOk=Date.now();syncErr=''})
-   .catch(function(e){syncErr=errText(e)})
-   .then(function(){syncing=false;saveNow();renderSync();if(!syncErr&&pendingCount())queueSync()});
-}
-function testConn(){
-  if(!CFG.url||!CFG.key){alert("Renseignez l'adresse du serveur et la clé.");return}
-  post({action:'ping'}).then(function(){alert('Connexion réussie ✔')}).catch(function(e){alert('Échec : '+errText(e))});
-}
-function cfgLink(){
-  readCfg();
-  if(!CFG.url||!CFG.key){alert("Enregistrez d'abord l'adresse du serveur et la clé.");return}
-  if(!/^https?:/.test(location.protocol)){alert("Ouvrez l'outil depuis son adresse en ligne (https://…) pour créer le lien à partager.");return}
-  var b=b64enc(JSON.stringify({u:CFG.url,k:CFG.key,a:CFG.agent,i:CFG.institution,s:CFG.structure,l:CFG.localite})).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-  var link=location.href.split('#')[0]+'#cfg='+b;
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(link).then(function(){alert("Lien copié. Envoyez-le aux agents : l'outil se configurera tout seul. Ne le publiez pas.")},function(){prompt('Copiez ce lien :',link)});
-  }else prompt('Copiez ce lien :',link);
-}
-function initSync(){
-  loadCfg();applyCfgDefaults();renderCfg();renderAll();renderSync();
-  window.addEventListener('online',function(){syncNow(false)});
-  window.addEventListener('offline',renderSync);
-  setInterval(function(){if(pendingCount()&&!syncing)syncNow(false)},1800000);
-  setTimeout(function(){syncNow(false)},1500);
+function touch(f){f.rev=(f.rev||0)+1;f.updated=Date.now()}
+function init(){
+  load();renderAll();saveNow();
   if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){navigator.serviceWorker.register('sw.js').catch(function(){})}
 }
 
-loadCfg();load();renderAll();saveNow();initSync();
+init();
 })();
 </script>
 </body>
